@@ -1,4 +1,4 @@
-import os
+ import os
 import uuid
 
 import streamlit as st
@@ -124,12 +124,25 @@ st.markdown(
         margin: -10px 0 16px 14px;
     }
 
-    /* Card containers (st.container(border=True)) */
+    /* Card containers (st.container(border=True)) -- lifted clearly off the
+       page background, with a visible border, a soft shadow, a teal top
+       edge, and breathing room below so consecutive cards (e.g. one PPA
+       after another) don't visually run together. */
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #111C30;
-        border: 1px solid #1F2E4A !important;
+        background-color: #15213C !important;
+        border: 1px solid #30456B !important;
         border-radius: 14px !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        margin-bottom: 20px !important;
+        position: relative;
+        overflow: hidden;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"]::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #14B8A6, #0EA5A5, #14B8A6);
     }
 
     /* Inputs */
@@ -142,6 +155,51 @@ st.markdown(
         color: #E2E8F0 !important;
     }
     label, .stMarkdown p, .stCaption { color: #CBD5E1 !important; }
+
+    /* Number input +/- steppers -- dim them to match the dark surface
+       instead of the bright default icon color, with a teal hover cue */
+    div[data-testid="stNumberInputContainer"] {
+        background-color: #0B1424 !important;
+        border: 1px solid #26314A !important;
+        border-radius: 8px !important;
+    }
+    button[data-testid="stNumberInputStepUp"],
+    button[data-testid="stNumberInputStepDown"] {
+        background-color: #0B1424 !important;
+        color: #5B6B85 !important;
+        border: none !important;
+    }
+    button[data-testid="stNumberInputStepUp"]:hover,
+    button[data-testid="stNumberInputStepDown"]:hover {
+        background-color: #16233B !important;
+        color: #5EEAD4 !important;
+    }
+
+    /* File uploader -- force a dark dropzone regardless of the base theme */
+    section[data-testid="stFileUploaderDropzone"] {
+        background-color: #0B1424 !important;
+        border: 1.5px dashed #30456B !important;
+        border-radius: 10px !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] button {
+        background-color: #16233B !important;
+        border: 1px solid #30456B !important;
+        color: #E2E8F0 !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] button:hover {
+        border-color: #14B8A6 !important;
+        color: #5EEAD4 !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] span,
+    section[data-testid="stFileUploaderDropzone"] small,
+    div[data-testid="stFileUploaderDropzoneInstructions"] span {
+        color: #94A3B8 !important;
+    }
+    div[data-testid="stFileUploaderFile"] {
+        background-color: #0B1424 !important;
+        border: 1px solid #26314A !important;
+        border-radius: 8px !important;
+    }
 
     /* Buttons */
     .stButton > button {
@@ -364,20 +422,21 @@ m1.metric("Offtakers", len(st.session_state.ppas))
 m2.metric("Total Contracted Energy", f"{total_actual / 1e6:,.1f} Mn kWh")
 m3.metric("Total RTC Quantum", f"{total_quantum:,.1f} MW")
 
-for ppa in st.session_state.ppas:
+for ppa_idx, ppa in enumerate(st.session_state.ppas, start=1):
     pid = ppa["_id"]
     with st.container(border=True):
         top_col1, top_col2, top_col3 = st.columns([4, 2, 1])
         ppa["Company"] = top_col1.text_input(
-            "Company", value=ppa["Company"], key=f"name_{pid}", label_visibility="collapsed",
+            f"PPA #{ppa_idx} — Company", value=ppa["Company"], key=f"name_{pid}",
             placeholder="Company name",
         )
         ppa["Discharge Period"] = top_col2.selectbox(
             "Discharge Period", options=["24H-RTC", "LimitedH-RTC"],
             index=["24H-RTC", "LimitedH-RTC"].index(ppa["Discharge Period"]),
-            key=f"period_{pid}", label_visibility="collapsed",
+            key=f"period_{pid}",
         )
         with top_col3:
+            st.write("")
             st.button("\U0001F5D1️ Remove", key=f"remove_{pid}", on_click=_remove_ppa, args=(pid,),
                        use_container_width=True)
 
