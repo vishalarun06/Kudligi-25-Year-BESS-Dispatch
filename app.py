@@ -372,18 +372,18 @@ with st.container(border=True):
         try:
             with open("Kudligi_Template.xlsx", "rb") as template_file:
                 st.download_button(
-                    label="\U0001F4E5 Download Kudligi_Template.xlsx",
+                    label="\U0001F4E5 Download Template.xlsx",
                     data=template_file,
-                    file_name="Kudligi_Template.xlsx",
+                    file_name="Template.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                 )
         except FileNotFoundError:
-            st.warning("'Kudligi_Template.xlsx' not found in the local directory -- run make_kudligi_template.py once.")
+            st.warning("Template not found in the local directory")
 
     with col_up:
         st.markdown("**Step 2 &mdash; Upload it back, filled in**")
-        st.caption("Accepts the filled-in template, or the full Kudligi Spreadsheet.xlsx.")
+        st.caption("Accepts the filled-in template, or the full Spreadsheet.xlsx.")
         uploaded_file = st.file_uploader(
             "Upload workbook",
             type=["xlsx"],
@@ -404,11 +404,10 @@ tab_grid, tab_bess, tab_degrad, tab_capex = st.tabs(
 with tab_grid:
     with st.container(border=True):
         st.markdown("**Grid Connection & Off-take Caps**")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         hybrid_conn = col1.number_input("Hybrid Connectivity / GNA (MW)", value=300.0, step=10.0)
         limitedH_RTC = col2.number_input("LimitedH-RTC Cap (MW)", value=100.0, step=10.0)
         all_day_RTC = col3.number_input("24H-RTC Pool Cap (MW)", value=120.0, step=10.0)
-        limitedH_tariff = col4.number_input("LimitedH-RTC Tariff (Rs/kWh)", value=5.65, step=0.05)
 
     with st.container(border=True):
         st.markdown("**Plant Capacity**")
