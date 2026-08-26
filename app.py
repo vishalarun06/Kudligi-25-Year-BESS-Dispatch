@@ -421,7 +421,7 @@ with tab_bess:
     with st.container(border=True):
         st.markdown("**BESS Sizing & Efficiency**")
         col8, col9, col10 = st.columns(3)
-        bess_capacity_kwh = col8.number_input("BESS Hours of Storage (Hrs)", value=5, step=1, format="%.2f") * 100000 * 1.05242164697659
+        bess_capacity_kwh = col8.number_input("BESS Hours of Storage (Hrs)", value=5, step=1) * 100000 * 1.05242164697659
         pcs_cap = col9.number_input("PCS Power Cap (MW)", value=100.0, step=10.0)
         rte = col10.number_input("Round-Trip Efficiency (%)", min_value=0.0, max_value=100.0, value=84.78, step=0.5) / 100.0
 
