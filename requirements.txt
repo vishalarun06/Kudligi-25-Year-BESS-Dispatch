@@ -1,5 +1,5 @@
 pandas
 openpyxl
 numpy
-streamlit
+streamlit==1.61.1
 numpy-financial
