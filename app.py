@@ -129,10 +129,10 @@ st.markdown(
        edge, and breathing room below so consecutive cards (e.g. one PPA
        after another) don't visually run together. */
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #15213C !important;
-        border: 1px solid #30456B !important;
+        background-color: #17233F !important;
+        border: 2px solid #4A6BA0 !important;
         border-radius: 14px !important;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        box-shadow: 0 0 0 1px rgba(94,234,212,0.08), 0 6px 20px rgba(0,0,0,0.45);
         margin-bottom: 20px !important;
         position: relative;
         overflow: hidden;
@@ -147,14 +147,53 @@ st.markdown(
 
     /* Inputs */
     div[data-testid="stNumberInput"] input,
-    div[data-testid="stTextInput"] input,
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+    div[data-testid="stTextInput"] input {
         background-color: #0B1424 !important;
         border-radius: 8px !important;
         border: 1px solid #26314A !important;
         color: #E2E8F0 !important;
     }
     label, .stMarkdown p, .stCaption { color: #CBD5E1 !important; }
+
+    /* Select / dropdown -- match the upload box's dark styling. Covers
+       both the older Baseweb-based select markup and the newer
+       react-aria-based one, since the exact DOM depends on the Streamlit
+       version. */
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+    div[data-testid="stSelectbox"] div[role="group"] {
+        background-color: #0B1424 !important;
+        border: 1px solid #26314A !important;
+        border-radius: 8px !important;
+        color: #E2E8F0 !important;
+    }
+    div[data-testid="stSelectbox"] input,
+    div[data-testid="stSelectbox"] input[role="combobox"] {
+        background-color: transparent !important;
+        color: #E2E8F0 !important;
+    }
+    div[data-testid="stSelectbox"] button svg {
+        color: #8FA3C4 !important;
+        fill: #8FA3C4 !important;
+    }
+    /* Dropdown popover (renders in a portal, outside the card) */
+    div[data-testid="stSelectboxVirtualDropdown"],
+    ul[data-baseweb="menu"],
+    div[data-baseweb="popover"] {
+        background-color: #111C30 !important;
+        border: 1px solid #30456B !important;
+        border-radius: 10px !important;
+    }
+    div[data-testid="stSelectboxVirtualDropdown"] [role="option"],
+    li[data-baseweb="menu-item"] {
+        background-color: transparent !important;
+        color: #E2E8F0 !important;
+    }
+    div[data-testid="stSelectboxVirtualDropdown"] [data-item-hl],
+    li[data-baseweb="menu-item"]:hover,
+    li[aria-selected="true"] {
+        background-color: #1E2E4D !important;
+        color: #5EEAD4 !important;
+    }
 
     /* Number input +/- steppers -- dim them to match the dark surface
        instead of the bright default icon color, with a teal hover cue */
@@ -359,11 +398,13 @@ with tab_bess:
         max_soc_perc = col11.number_input("Max SoC (%)", min_value=0.0, max_value=100.0, value=100.0, step=5.0) / 100.0
         min_soc_perc = col12.number_input("Min SoC (%)", min_value=0.0, max_value=100.0, value=0.0, step=5.0) / 100.0
 
-
-eve_start = 20
-eve_end = 24
-morn_start = 0
-morn_end = 1
+    with st.container(border=True):
+        st.markdown("**Discharge Windows (Hour of day, 1&ndash;24)**")
+        col13, col14, col15, col16 = st.columns(4)
+        eve_start = col13.number_input("Evening Start", min_value=1, max_value=24, value=20, step=1)
+        eve_end = col14.number_input("Evening End", min_value=1, max_value=24, value=24, step=1)
+        morn_start = col15.number_input("Morning Start", min_value=0, max_value=24, value=0, step=1)
+        morn_end = col16.number_input("Morning End", min_value=0, max_value=24, value=1, step=1)
 
 with tab_degrad:
     with st.container(border=True):
