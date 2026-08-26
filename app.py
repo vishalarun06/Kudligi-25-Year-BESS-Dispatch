@@ -50,7 +50,7 @@ BLANK_PPA = {
 }
 
 st.set_page_config(
-    page_title="Kudligi Wind-Solar+BESS 25-Year Simulation",
+    page_title="Watt-a-Wonder",
     page_icon="\U0001F300",
     layout="wide",
 )
