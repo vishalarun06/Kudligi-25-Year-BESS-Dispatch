@@ -337,7 +337,7 @@ st.markdown(
 st.markdown(
     """
     <div class="kud-hero">
-        <h1>\U0001F300 Kudligi Wind-Solar+BESS &mdash; 25-Year Simulation</h1>
+        <h1>\U0001F300 Watt-A-Wonder </h1>
         <p>Upload hourly generation and exchange-price data, tune the plant, PPA, and BESS
         parameters, and run the full 25-year hour-by-hour dispatch and financial model.</p>
         <div class="kud-badges">
