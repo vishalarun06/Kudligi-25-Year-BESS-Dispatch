@@ -125,24 +125,33 @@ st.markdown(
     }
 
     /* Card containers (st.container(border=True)) -- lifted clearly off the
-       page background, with a visible border, a soft shadow, a teal top
+       page background, with a visible neon border, a glow, a teal top
        edge, and breathing room below so consecutive cards (e.g. one PPA
-       after another) don't visually run together. */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
+       after another) don't visually run together.
+       NOTE: newer Streamlit (1.6x) renders the bordered box directly on
+       the div[data-testid="stVerticalBlock"] itself via an internal
+       emotion-cache class (here: st-emotion-cache-130yy1s) rather than
+       on a separate ...BorderWrapper div. That class name is generated
+       by Streamlit's build and is only guaranteed to match the pinned
+       version in requirements.txt -- both selectors are kept so this
+       still degrades gracefully on a different Streamlit version. */
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stVerticalBlock"].st-emotion-cache-130yy1s {
         background-color: #17233F !important;
-        border: 2px solid #4A6BA0 !important;
+        border: 3px solid #2DD4BF !important;
         border-radius: 14px !important;
-        box-shadow: 0 0 0 1px rgba(94,234,212,0.08), 0 6px 20px rgba(0,0,0,0.45);
-        margin-bottom: 20px !important;
+        box-shadow: 0 0 14px rgba(45,212,191,0.55), 0 0 2px rgba(45,212,191,0.8), 0 6px 20px rgba(0,0,0,0.45);
+        margin-bottom: 22px !important;
         position: relative;
         overflow: hidden;
     }
-    div[data-testid="stVerticalBlockBorderWrapper"]::before {
+    div[data-testid="stVerticalBlockBorderWrapper"]::before,
+    div[data-testid="stVerticalBlock"].st-emotion-cache-130yy1s::before {
         content: "";
         position: absolute;
         top: 0; left: 0; right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, #14B8A6, #0EA5A5, #14B8A6);
+        height: 4px;
+        background: linear-gradient(90deg, #14B8A6, #2DD4BF, #14B8A6);
     }
 
     /* Inputs */
@@ -193,6 +202,28 @@ st.markdown(
     li[aria-selected="true"] {
         background-color: #1E2E4D !important;
         color: #5EEAD4 !important;
+    }
+
+    /* Tabs -- force readable text regardless of the base theme. Without
+       this, an unselected tab's label can inherit a very dark default
+       text color (near-invisible on our dark background) and only pick
+       up Streamlit's default red accent on hover/selection. */
+    div[data-testid="stTab"] p {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+    div[data-testid="stTab"][aria-selected="true"] p {
+        color: #5EEAD4 !important;
+    }
+    div[data-testid="stTab"]:hover p {
+        color: #5EEAD4 !important;
+    }
+    div[data-testid="stTabs"] .react-aria-SelectionIndicator,
+    div[data-testid="stTabs"] [role="tablist"] [aria-selected="true"]::after {
+        background-color: #14B8A6 !important;
+    }
+    div[data-testid="stTabs"] [role="tablist"] {
+        border-bottom: 1px solid #26314A !important;
     }
 
     /* Number input +/- steppers -- dim them to match the dark surface
@@ -399,12 +430,14 @@ with tab_bess:
         min_soc_perc = col12.number_input("Min SoC (%)", min_value=0.0, max_value=100.0, value=0.0, step=5.0) / 100.0
 
     with st.container(border=True):
-        st.markdown("**Discharge Windows (Hour of day, 1&ndash;24)**")
-        col13, col14, col15, col16 = st.columns(4)
-        eve_start = col13.number_input("Evening Start", min_value=1, max_value=24, value=20, step=1)
-        eve_end = col14.number_input("Evening End", min_value=1, max_value=24, value=24, step=1)
-        morn_start = col15.number_input("Morning Start", min_value=0, max_value=24, value=0, step=1)
-        morn_end = col16.number_input("Morning End", min_value=0, max_value=24, value=1, step=1)
+        st.markdown("**Discharge Windows (Hour of day, 0&ndash;24)**")
+        col13, col14 = st.columns(2)
+        eve_start, eve_end = col13.slider(
+            "Evening Discharge Window", min_value=1, max_value=24, value=(20, 24), step=1,
+        )
+        morn_start, morn_end = col14.slider(
+            "Morning Discharge Window", min_value=0, max_value=24, value=(0, 1), step=1,
+        )
 
 with tab_degrad:
     with st.container(border=True):
