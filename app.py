@@ -620,7 +620,6 @@ if run_clicked:
                 max_soc_perc=max_soc_perc,
                 min_soc_perc=min_soc_perc,
                 rte=rte,
-                limitedH_tariff=limitedH_tariff,
                 solar_gen_degrad=solar_gen_degrad,
                 wind_gen_degrad=wind_gen_degrad,
                 BESS_capacity_degrad=bess_cap_degrad,
