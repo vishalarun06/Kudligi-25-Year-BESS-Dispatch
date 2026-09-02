@@ -18,7 +18,6 @@ class KudligiDashboard:
                  BESS_discharge_eve_start, BESS_discharge_eve_end,
                  BESS_discharge_morn_start, BESS_discharge_morn_end,
                  pcs_cap, BESS_capacity, max_soc_perc, min_soc_perc, rte,
-                 limitedH_tariff,
                  solar_gen_degrad, wind_gen_degrad, BESS_capacity_degrad, RTE_degrad,
                  solar_capex_rate, wind_capex_rate, bess_capex_rate,
                  solar_maintenance_rate, wind_maintenance_rate, bess_maintenance_rate,
@@ -48,7 +47,6 @@ class KudligiDashboard:
         self.max_soc_perc = max_soc_perc
         self.min_soc_perc = min_soc_perc
         self.rte = rte
-        self.limitedH_tariff = limitedH_tariff
 
         self.solar_gen_degrad = solar_gen_degrad
         self.wind_gen_degrad = wind_gen_degrad
