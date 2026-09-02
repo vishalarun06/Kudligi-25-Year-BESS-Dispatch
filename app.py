@@ -306,7 +306,7 @@ st.markdown(
 st.markdown(
     """
     <div class="kud-hero">
-        <h1>\U0001F300 Kudligi Wind-Solar+BESS &mdash; 25-Year Simulation</h1>
+        <h1>\U0001F300 Watt-A-Wonder</h1>
         <p>Upload hourly generation and exchange-price data, tune the plant, PPA, and BESS
         parameters, and run the full 25-year hour-by-hour dispatch and financial model.</p>
         <div class="kud-badges">
@@ -373,11 +373,15 @@ tab_grid, tab_bess, tab_degrad, tab_capex = st.tabs(
 with tab_grid:
     with st.container(border=True):
         st.markdown("**Grid Connection & Off-take Caps**")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         hybrid_conn = col1.number_input("Hybrid Connectivity / GNA (MW)", value=300.0, step=10.0)
         limitedH_RTC = col2.number_input("LimitedH-RTC Cap (MW)", value=100.0, step=10.0)
         all_day_RTC = col3.number_input("24H-RTC Pool Cap (MW)", value=120.0, step=10.0)
-        limitedH_tariff = col4.number_input("LimitedH-RTC Tariff (Rs/kWh)", value=5.65, step=0.05)
+        # LimitedH-RTC Tariff input removed: LimitedH-RTC revenue is resolved
+        # entirely from each PPA's own "Tariff (Rs/kWh)" field in the PPA
+        # portfolio (see Kudligi.calc_ppa_allocation_limited()) -- there is
+        # no code path anywhere that reads a single pooled LimitedH tariff,
+        # so this input never affected the simulation.
 
     with st.container(border=True):
         st.markdown("**Plant Capacity**")
@@ -386,13 +390,18 @@ with tab_grid:
         ac_solar_capacity = col6.number_input("AC Solar Capacity (MW)", value=275.0, step=10.0)
         dc_ac_overload = col7.number_input("DC/AC Overload Ratio", value=1.5, step=0.1)
 
+# BESS capacity is entered as hours of storage and scaled up linearly to
+# kWh, anchored so 5 hours matches the plant's known as-built capacity of
+# 526,210.82 kWh (i.e. 1 hour of storage = 526,210.8234882968 / 5 kWh).
+BESS_KWH_PER_HOUR = 526_210.8234882968 / 5.0
+
 with tab_bess:
     with st.container(border=True):
         st.markdown("**BESS Sizing & Efficiency**")
         col8, col9, col10 = st.columns(3)
-        scaling = 526210.82 / 5
-        bess_capacity_kwh = col8.number_input("BESS Hours of Storage", value=5, step=1, format="%.2f")
-        bess_capacity_kwh = bess_capacity_kwh * scaling
+        bess_hours = col8.number_input("BESS Hours of Storage (h)", min_value=0.0, value=5.0, step=0.5)
+        bess_capacity_kwh = bess_hours * BESS_KWH_PER_HOUR
+        col8.caption(f"→ BESS Capacity: {bess_capacity_kwh:,.2f} kWh")
         pcs_cap = col9.number_input("PCS Power Cap (MW)", value=100.0, step=10.0)
         rte = col10.number_input("Round-Trip Efficiency (%)", min_value=0.0, max_value=100.0, value=84.78, step=0.5) / 100.0
 
@@ -553,6 +562,10 @@ if run_clicked:
             """,
             unsafe_allow_html=True,
         )
+        progress_bar = st.progress(0, text="Starting simulation...")
+
+        def _update_progress(done, total, label):
+            progress_bar.progress(done / total, text=f"{label}  ({done}/{total})")
 
         # Bug fix: a fixed filename here (and for output_path below) means
         # two users clicking "Run Simulation" at the same moment on a
@@ -564,7 +577,7 @@ if run_clicked:
             f.write(uploaded_file.getbuffer())
 
         output_path = None
-        ppa_output_path = None
+        hourly_dispatch_path = None
         try:
             ppas = [
                 PPA(
@@ -596,7 +609,6 @@ if run_clicked:
                 max_soc_perc=max_soc_perc,
                 min_soc_perc=min_soc_perc,
                 rte=rte,
-                limitedH_tariff=limitedH_tariff,
                 solar_gen_degrad=solar_gen_degrad,
                 wind_gen_degrad=wind_gen_degrad,
                 BESS_capacity_degrad=bess_cap_degrad,
@@ -611,10 +623,15 @@ if run_clicked:
             )
 
             output_path = f"Kudligi_Revenue_Costs_EBITDA_Table_{run_id}.xlsx"
-            ppa_output_path = f"Kudligi_PPA_Compliance_25Yr_{run_id}.xlsx"
-            results = dash.run_dashboard(irr_table_path=output_path, ppa_summary_path=ppa_output_path)
+            hourly_dispatch_path = f"Kudligi_Hourly_Dispatch_25Yr_{run_id}.xlsx"
+            results = dash.run_dashboard(
+                irr_table_path=output_path,
+                hourly_dispatch_path=hourly_dispatch_path,
+                progress_callback=_update_progress,
+            )
 
             loader_placeholder.empty()
+            progress_bar.empty()
             st.success("Simulation completed!", icon="✅")
             st.balloons()
 
@@ -628,37 +645,28 @@ if run_clicked:
                 f"{results['payback']:.2f} Years" if results["payback"] is not None else "N/A",
             )
 
-            section_title(
-                "\U0001F50B",
-                "PPA Compliance Summary — All 25 Years",
-                "Per-company delivered energy, revenue, and shortfall vs. contracted minimum, year by year.",
-            )
-            compliance_by_year = {u["Year"]: u for u in results["ppa compliance"]}
-            year_tabs = st.tabs([f"Year {y}" for y in range(1, 26)])
-            for y, tab in zip(range(1, 26), year_tabs):
-                with tab:
-                    v_with = compliance_by_year[y]["PPAs Violated with BESS"]
-                    v_without = compliance_by_year[y]["PPAs Violated without BESS"]
-                    v_due_to_bess = compliance_by_year[y]["PPAs Violated due to lack of BESS"]
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("Short of Minimum (with BESS)", len(v_with))
-                    c2.metric("Short of Minimum (without BESS)", len(v_without))
-                    c3.metric("...only short because there's no BESS", len(v_due_to_bess))
-                    if v_with:
-                        st.caption("Short of their contracted minimum, with BESS: " + ", ".join(v_with))
-                    if v_due_to_bess:
-                        st.caption("Would meet their minimum if the BESS were present: " + ", ".join(v_due_to_bess))
-                    st.dataframe(
-                        results["ppa_summaries_by_year"][y],
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+            section_title("\U0001F50B", "PPA Minimum-Supply Compliance (Year 1)")
+            v_with = results["PPAs Violated with BESS"]
+            v_without = results["PPAs Violated without BESS"]
+            v_due_to_bess = results["PPAs Violated due to lack of BESS"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Short of Minimum (with BESS)", len(v_with))
+            c2.metric("Short of Minimum (without BESS)", len(v_without))
+            c3.metric("...only short because there's no BESS", len(v_due_to_bess))
+            if v_with:
+                st.caption("Short of their contracted minimum, with BESS: " + ", ".join(v_with))
+            if v_due_to_bess:
+                st.caption("Would meet their minimum if the BESS were present: " + ", ".join(v_due_to_bess))
 
             section_title("\U0001F4C8", "Revenue / Costs / EBITDA by Year")
             st.dataframe(results["irr_table"], use_container_width=True, hide_index=True)
 
+            section_title("\U0001F4C4", "Year 1 — Per-Company PPA Summary")
+            if dash.year1_plant is not None:
+                st.dataframe(dash.year1_plant.ppa_summary(), use_container_width=True, hide_index=True)
+
             section_title("⬇️", "Download Results")
-            dl_col1, dl_col2, dl_col3 = st.columns(3)
+            dl_col1, dl_col2 = st.columns(2)
             with dl_col1, open(output_path, "rb") as out_file:
                 st.download_button(
                     label="\U0001F4CA Download Revenue, Costs & EBITDA Table",
@@ -667,27 +675,18 @@ if run_clicked:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                 )
-            with dl_col2, open(ppa_output_path, "rb") as ppa_file:
+            with dl_col2, open(hourly_dispatch_path, "rb") as hourly_file:
                 st.download_button(
-                    label="\U0001F91D Download PPA Compliance (25 Years, 1 Sheet/Year)",
-                    data=ppa_file,
-                    file_name="Kudligi_PPA_Compliance_25Yr.xlsx",
+                    label="\U0001F4C8 Download Hourly Dispatch — All 25 Years (1 Sheet/Year)",
+                    data=hourly_file,
+                    file_name="Kudligi_Hourly_Dispatch_25Yr.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                 )
-            if dash.year1_plant is not None:
-                hourly_csv = dash.year1_plant.generation.to_csv(index=False).encode("utf-8")
-                with dl_col3:
-                    st.download_button(
-                        label="\U0001F4C8 Download Year 1 Hourly Dispatch (CSV)",
-                        data=hourly_csv,
-                        file_name="Kudligi_Year1_Hourly_Dispatch.csv",
-                        mime="text/csv",
-                        use_container_width=True,
-                    )
 
         except Exception as e:
             loader_placeholder.empty()
+            progress_bar.empty()
             st.error(f"An error occurred during simulation: {e}")
 
         finally:
@@ -695,8 +694,8 @@ if run_clicked:
                 os.remove(temp_file_path)
             if output_path and os.path.exists(output_path):
                 os.remove(output_path)
-            if ppa_output_path and os.path.exists(ppa_output_path):
-                os.remove(ppa_output_path)
+            if hourly_dispatch_path and os.path.exists(hourly_dispatch_path):
+                os.remove(hourly_dispatch_path)
 
 st.write("")
 st.caption("Fourth Partner Energy — Kudligi Wind-Solar+BESS dispatch & financial model")
