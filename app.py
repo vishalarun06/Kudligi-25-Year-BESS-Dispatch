@@ -50,7 +50,7 @@ BLANK_PPA = {
 }
 
 st.set_page_config(
-    page_title="Watt-a-Wonder",
+    page_title="Kudligi Wind-Solar+BESS 25-Year Simulation",
     page_icon="\U0001F300",
     layout="wide",
 )
@@ -125,33 +125,24 @@ st.markdown(
     }
 
     /* Card containers (st.container(border=True)) -- lifted clearly off the
-       page background, with a visible neon border, a glow, a teal top
+       page background, with a visible border, a soft shadow, a teal top
        edge, and breathing room below so consecutive cards (e.g. one PPA
-       after another) don't visually run together.
-       NOTE: newer Streamlit (1.6x) renders the bordered box directly on
-       the div[data-testid="stVerticalBlock"] itself via an internal
-       emotion-cache class (here: st-emotion-cache-130yy1s) rather than
-       on a separate ...BorderWrapper div. That class name is generated
-       by Streamlit's build and is only guaranteed to match the pinned
-       version in requirements.txt -- both selectors are kept so this
-       still degrades gracefully on a different Streamlit version. */
-    div[data-testid="stVerticalBlockBorderWrapper"],
-    div[data-testid="stVerticalBlock"].st-emotion-cache-130yy1s {
+       after another) don't visually run together. */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #17233F !important;
-        border: 3px solid #2DD4BF !important;
+        border: 2px solid #4A6BA0 !important;
         border-radius: 14px !important;
-        box-shadow: 0 0 14px rgba(45,212,191,0.55), 0 0 2px rgba(45,212,191,0.8), 0 6px 20px rgba(0,0,0,0.45);
-        margin-bottom: 22px !important;
+        box-shadow: 0 0 0 1px rgba(94,234,212,0.08), 0 6px 20px rgba(0,0,0,0.45);
+        margin-bottom: 20px !important;
         position: relative;
         overflow: hidden;
     }
-    div[data-testid="stVerticalBlockBorderWrapper"]::before,
-    div[data-testid="stVerticalBlock"].st-emotion-cache-130yy1s::before {
+    div[data-testid="stVerticalBlockBorderWrapper"]::before {
         content: "";
         position: absolute;
         top: 0; left: 0; right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #14B8A6, #2DD4BF, #14B8A6);
+        height: 3px;
+        background: linear-gradient(90deg, #14B8A6, #0EA5A5, #14B8A6);
     }
 
     /* Inputs */
@@ -202,28 +193,6 @@ st.markdown(
     li[aria-selected="true"] {
         background-color: #1E2E4D !important;
         color: #5EEAD4 !important;
-    }
-
-    /* Tabs -- force readable text regardless of the base theme. Without
-       this, an unselected tab's label can inherit a very dark default
-       text color (near-invisible on our dark background) and only pick
-       up Streamlit's default red accent on hover/selection. */
-    div[data-testid="stTab"] p {
-        color: #FFFFFF !important;
-        font-weight: 600 !important;
-    }
-    div[data-testid="stTab"][aria-selected="true"] p {
-        color: #5EEAD4 !important;
-    }
-    div[data-testid="stTab"]:hover p {
-        color: #5EEAD4 !important;
-    }
-    div[data-testid="stTabs"] .react-aria-SelectionIndicator,
-    div[data-testid="stTabs"] [role="tablist"] [aria-selected="true"]::after {
-        background-color: #14B8A6 !important;
-    }
-    div[data-testid="stTabs"] [role="tablist"] {
-        border-bottom: 1px solid #26314A !important;
     }
 
     /* Number input +/- steppers -- dim them to match the dark surface
@@ -337,7 +306,7 @@ st.markdown(
 st.markdown(
     """
     <div class="kud-hero">
-        <h1>\U0001F300 Watt-A-Wonder </h1>
+        <h1>\U0001F300 Kudligi Wind-Solar+BESS &mdash; 25-Year Simulation</h1>
         <p>Upload hourly generation and exchange-price data, tune the plant, PPA, and BESS
         parameters, and run the full 25-year hour-by-hour dispatch and financial model.</p>
         <div class="kud-badges">
@@ -372,18 +341,18 @@ with st.container(border=True):
         try:
             with open("Kudligi_Template.xlsx", "rb") as template_file:
                 st.download_button(
-                    label="\U0001F4E5 Download Template.xlsx",
+                    label="\U0001F4E5 Download Kudligi_Template.xlsx",
                     data=template_file,
-                    file_name="Template.xlsx",
+                    file_name="Kudligi_Template.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                 )
         except FileNotFoundError:
-            st.warning("Template not found in the local directory")
+            st.warning("'Kudligi_Template.xlsx' not found in the local directory -- run make_kudligi_template.py once.")
 
     with col_up:
         st.markdown("**Step 2 &mdash; Upload it back, filled in**")
-        st.caption("Accepts the filled-in template, or the full Spreadsheet.xlsx.")
+        st.caption("Accepts the filled-in template, or the full Kudligi Spreadsheet.xlsx.")
         uploaded_file = st.file_uploader(
             "Upload workbook",
             type=["xlsx"],
@@ -404,10 +373,11 @@ tab_grid, tab_bess, tab_degrad, tab_capex = st.tabs(
 with tab_grid:
     with st.container(border=True):
         st.markdown("**Grid Connection & Off-take Caps**")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         hybrid_conn = col1.number_input("Hybrid Connectivity / GNA (MW)", value=300.0, step=10.0)
         limitedH_RTC = col2.number_input("LimitedH-RTC Cap (MW)", value=100.0, step=10.0)
         all_day_RTC = col3.number_input("24H-RTC Pool Cap (MW)", value=120.0, step=10.0)
+        limitedH_tariff = col4.number_input("LimitedH-RTC Tariff (Rs/kWh)", value=5.65, step=0.05)
 
     with st.container(border=True):
         st.markdown("**Plant Capacity**")
@@ -420,7 +390,7 @@ with tab_bess:
     with st.container(border=True):
         st.markdown("**BESS Sizing & Efficiency**")
         col8, col9, col10 = st.columns(3)
-        bess_capacity_kwh = col8.number_input("BESS Hours of Storage (Hrs)", value=5, step=1) * 100000 * 1.05242164697659
+        bess_capacity_kwh = col8.number_input("BESS Max SoC (kWh)", value=526_210.82, step=1000.0, format="%.2f")
         pcs_cap = col9.number_input("PCS Power Cap (MW)", value=100.0, step=10.0)
         rte = col10.number_input("Round-Trip Efficiency (%)", min_value=0.0, max_value=100.0, value=84.78, step=0.5) / 100.0
 
@@ -428,10 +398,13 @@ with tab_bess:
         max_soc_perc = col11.number_input("Max SoC (%)", min_value=0.0, max_value=100.0, value=100.0, step=5.0) / 100.0
         min_soc_perc = col12.number_input("Min SoC (%)", min_value=0.0, max_value=100.0, value=0.0, step=5.0) / 100.0
 
-
-eve_start, eve_end = 20,24
-morn_start, morn_end = 0,1
-
+    with st.container(border=True):
+        st.markdown("**Discharge Windows (Hour of day, 1&ndash;24)**")
+        col13, col14, col15, col16 = st.columns(4)
+        eve_start = col13.number_input("Evening Start", min_value=1, max_value=24, value=20, step=1)
+        eve_end = col14.number_input("Evening End", min_value=1, max_value=24, value=24, step=1)
+        morn_start = col15.number_input("Morning Start", min_value=0, max_value=24, value=0, step=1)
+        morn_end = col16.number_input("Morning End", min_value=0, max_value=24, value=1, step=1)
 
 with tab_degrad:
     with st.container(border=True):
@@ -589,6 +562,7 @@ if run_clicked:
             f.write(uploaded_file.getbuffer())
 
         output_path = None
+        ppa_output_path = None
         try:
             ppas = [
                 PPA(
@@ -620,6 +594,7 @@ if run_clicked:
                 max_soc_perc=max_soc_perc,
                 min_soc_perc=min_soc_perc,
                 rte=rte,
+                limitedH_tariff=limitedH_tariff,
                 solar_gen_degrad=solar_gen_degrad,
                 wind_gen_degrad=wind_gen_degrad,
                 BESS_capacity_degrad=bess_cap_degrad,
@@ -634,7 +609,8 @@ if run_clicked:
             )
 
             output_path = f"Kudligi_Revenue_Costs_EBITDA_Table_{run_id}.xlsx"
-            results = dash.run_dashboard(irr_table_path=output_path)
+            ppa_output_path = f"Kudligi_PPA_Compliance_25Yr_{run_id}.xlsx"
+            results = dash.run_dashboard(irr_table_path=output_path, ppa_summary_path=ppa_output_path)
 
             loader_placeholder.empty()
             st.success("Simulation completed!", icon="✅")
@@ -650,28 +626,37 @@ if run_clicked:
                 f"{results['payback']:.2f} Years" if results["payback"] is not None else "N/A",
             )
 
-            section_title("\U0001F50B", "PPA Minimum-Supply Compliance (Year 1)")
-            v_with = results["PPAs Violated with BESS"]
-            v_without = results["PPAs Violated without BESS"]
-            v_due_to_bess = results["PPAs Violated due to lack of BESS"]
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Short of Minimum (with BESS)", len(v_with))
-            c2.metric("Short of Minimum (without BESS)", len(v_without))
-            c3.metric("...only short because there's no BESS", len(v_due_to_bess))
-            if v_with:
-                st.caption("Short of their contracted minimum, with BESS: " + ", ".join(v_with))
-            if v_due_to_bess:
-                st.caption("Would meet their minimum if the BESS were present: " + ", ".join(v_due_to_bess))
+            section_title(
+                "\U0001F50B",
+                "PPA Compliance Summary — All 25 Years",
+                "Per-company delivered energy, revenue, and shortfall vs. contracted minimum, year by year.",
+            )
+            compliance_by_year = {u["Year"]: u for u in results["ppa compliance"]}
+            year_tabs = st.tabs([f"Year {y}" for y in range(1, 26)])
+            for y, tab in zip(range(1, 26), year_tabs):
+                with tab:
+                    v_with = compliance_by_year[y]["PPAs Violated with BESS"]
+                    v_without = compliance_by_year[y]["PPAs Violated without BESS"]
+                    v_due_to_bess = compliance_by_year[y]["PPAs Violated due to lack of BESS"]
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Short of Minimum (with BESS)", len(v_with))
+                    c2.metric("Short of Minimum (without BESS)", len(v_without))
+                    c3.metric("...only short because there's no BESS", len(v_due_to_bess))
+                    if v_with:
+                        st.caption("Short of their contracted minimum, with BESS: " + ", ".join(v_with))
+                    if v_due_to_bess:
+                        st.caption("Would meet their minimum if the BESS were present: " + ", ".join(v_due_to_bess))
+                    st.dataframe(
+                        results["ppa_summaries_by_year"][y],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
             section_title("\U0001F4C8", "Revenue / Costs / EBITDA by Year")
             st.dataframe(results["irr_table"], use_container_width=True, hide_index=True)
 
-            section_title("\U0001F4C4", "Year 1 — Per-Company PPA Summary")
-            if dash.year1_plant is not None:
-                st.dataframe(dash.year1_plant.ppa_summary(), use_container_width=True, hide_index=True)
-
             section_title("⬇️", "Download Results")
-            dl_col1, dl_col2 = st.columns(2)
+            dl_col1, dl_col2, dl_col3 = st.columns(3)
             with dl_col1, open(output_path, "rb") as out_file:
                 st.download_button(
                     label="\U0001F4CA Download Revenue, Costs & EBITDA Table",
@@ -680,9 +665,17 @@ if run_clicked:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                 )
+            with dl_col2, open(ppa_output_path, "rb") as ppa_file:
+                st.download_button(
+                    label="\U0001F91D Download PPA Compliance (25 Years, 1 Sheet/Year)",
+                    data=ppa_file,
+                    file_name="Kudligi_PPA_Compliance_25Yr.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                )
             if dash.year1_plant is not None:
                 hourly_csv = dash.year1_plant.generation.to_csv(index=False).encode("utf-8")
-                with dl_col2:
+                with dl_col3:
                     st.download_button(
                         label="\U0001F4C8 Download Year 1 Hourly Dispatch (CSV)",
                         data=hourly_csv,
@@ -700,6 +693,8 @@ if run_clicked:
                 os.remove(temp_file_path)
             if output_path and os.path.exists(output_path):
                 os.remove(output_path)
+            if ppa_output_path and os.path.exists(ppa_output_path):
+                os.remove(ppa_output_path)
 
 st.write("")
 st.caption("Fourth Partner Energy — Kudligi Wind-Solar+BESS dispatch & financial model")
