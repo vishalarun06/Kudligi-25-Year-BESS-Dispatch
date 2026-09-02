@@ -18,6 +18,7 @@ class KudligiDashboard:
                  BESS_discharge_eve_start, BESS_discharge_eve_end,
                  BESS_discharge_morn_start, BESS_discharge_morn_end,
                  pcs_cap, BESS_capacity, max_soc_perc, min_soc_perc, rte,
+                 limitedH_tariff,
                  solar_gen_degrad, wind_gen_degrad, BESS_capacity_degrad, RTE_degrad,
                  solar_capex_rate, wind_capex_rate, bess_capex_rate,
                  solar_maintenance_rate, wind_maintenance_rate, bess_maintenance_rate,
@@ -47,6 +48,7 @@ class KudligiDashboard:
         self.max_soc_perc = max_soc_perc
         self.min_soc_perc = min_soc_perc
         self.rte = rte
+        self.limitedH_tariff = limitedH_tariff
 
         self.solar_gen_degrad = solar_gen_degrad
         self.wind_gen_degrad = wind_gen_degrad
@@ -64,6 +66,7 @@ class KudligiDashboard:
         self.irr_table = None
         self.year1_plant = None       # kept for the per-company PPA summary / hourly detail views
         self.year1_plant_no_bess = None
+        self.ppa_summaries_by_year = {}   # {year: ppa_summary() DataFrame}, with BESS, all 25 years
 
     def _build_plant_for_year(self, year, bess_capacity_override=None, pcs_cap_override=None):
         """
@@ -115,7 +118,7 @@ class KudligiDashboard:
         plant.generation["Solar Generation"] = plant.generation["Solar Generation"] * solar_factor
         plant.generation["Solar Generation2"] = plant.generation["Solar Generation2"] * solar_factor
 
-        plant.run()
+        plant.run(limitedH_tariff=self.limitedH_tariff)
         return plant
 
     def calc_revenue(self, year):
@@ -203,6 +206,25 @@ class KudligiDashboard:
         self.irr_table.to_excel(path, sheet_name="Revenue_Costs_EBITDA", index=False)
         return path
 
+    def save_ppa_summaries_by_year(self, path="Kudligi_PPA_Compliance_25Yr.xlsx"):
+        """
+        Writes one sheet per operating year (Year 1 .. Year 25), each holding
+        that year's full per-company PPA summary (delivered energy, revenue,
+        shortfall vs. minimum, etc.) -- the same table shown on the
+        dashboard's PPA compliance tabs. Requires calc_grid_utilization_comparison()
+        to have already been run for the years you want included (run_dashboard()
+        does this for all 25 years).
+        """
+        if not self.ppa_summaries_by_year:
+            raise RuntimeError(
+                "No PPA summaries computed yet -- call calc_grid_utilization_comparison() "
+                "for each year (or run_dashboard()) before saving."
+            )
+        with pd.ExcelWriter(path, engine="openpyxl") as writer:
+            for year in sorted(self.ppa_summaries_by_year):
+                self.ppa_summaries_by_year[year].to_excel(writer, sheet_name=f"Year {year}", index=False)
+        return path
+
     def calc_grid_utilization_comparison(self, year=1):
         """
         Kudligi has no "Effective Replacement" concept (that's specific to
@@ -218,6 +240,10 @@ class KudligiDashboard:
         violated_PPAs_noBESS = [ppa.company_name for ppa in without_bess.PPAs if ppa.shortfall_vs_minimum != 0.0]
         self.year1_plant_no_bess = without_bess
 
+        # Keep the full per-company PPA summary (with BESS) for this year --
+        # this is what powers the 25-year PPA compliance tabs / downloadable
+        # workbook, so we don't need a third build_plant_for_year() call.
+        self.ppa_summaries_by_year[year] = with_bess.ppa_summary()
 
         return {
             "Year": year,
@@ -226,18 +252,28 @@ class KudligiDashboard:
             "PPAs Violated due to lack of BESS": list(set(violated_PPAs_noBESS) - set(violated_PPAs_BESS)),
         }
 
-    def run_dashboard(self, irr_table_path="Kudligi_Revenue_Costs_EBITDA_Table.xlsx"):
+    def run_dashboard(self, irr_table_path="Kudligi_Revenue_Costs_EBITDA_Table.xlsx",
+                      ppa_summary_path="Kudligi_PPA_Compliance_25Yr.xlsx"):
         self.calc_irr_table()
         self.save_irr_table(irr_table_path)
         irr = self.calc_irr()
         capex_ebitda = self.calc_capex_ebitda_ratio()
         payback = self.calc_cumulative_payback_period()
-        utilization = self.calc_grid_utilization_comparison(year=1)
+        utilizations = []
+        # Bug fix: range(1, 25) stopped at year 24 and silently dropped
+        # Year 25 from both the compliance list and ppa_summaries_by_year.
+        for i in range(1, 26):
+            utilization = self.calc_grid_utilization_comparison(year=i)
+            utilizations.append(utilization)
+
+        ppa_summary_path = self.save_ppa_summaries_by_year(ppa_summary_path)
 
         return {
             "irr_table": self.irr_table,
             "irr": irr,
             "capex_to_ebitda_ratio": capex_ebitda,
             "payback": payback,
-            **utilization,
+            "ppa compliance": utilizations,
+            "ppa_summaries_by_year": self.ppa_summaries_by_year,
+            "ppa_summary_excel_path": ppa_summary_path,
         }
