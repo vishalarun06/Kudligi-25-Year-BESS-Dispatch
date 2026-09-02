@@ -115,7 +115,7 @@ class KudligiDashboard:
         plant.generation["Solar Generation"] = plant.generation["Solar Generation"] * solar_factor
         plant.generation["Solar Generation2"] = plant.generation["Solar Generation2"] * solar_factor
 
-        plant.run(limitedH_tariff=self.limitedH_tariff)
+        plant.run()
         return plant
 
     def calc_revenue(self, year):
