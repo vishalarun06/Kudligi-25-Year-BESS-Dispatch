@@ -409,13 +409,11 @@ with tab_bess:
         max_soc_perc = col11.number_input("Max SoC (%)", min_value=0.0, max_value=100.0, value=100.0, step=5.0) / 100.0
         min_soc_perc = col12.number_input("Min SoC (%)", min_value=0.0, max_value=100.0, value=0.0, step=5.0) / 100.0
 
-    with st.container(border=True):
-        st.markdown("**Discharge Windows (Hour of day, 1&ndash;24)**")
-        col13, col14, col15, col16 = st.columns(4)
-        eve_start = col13.number_input("Evening Start", min_value=1, max_value=24, value=20, step=1)
-        eve_end = col14.number_input("Evening End", min_value=1, max_value=24, value=24, step=1)
-        morn_start = col15.number_input("Morning Start", min_value=0, max_value=24, value=0, step=1)
-        morn_end = col16.number_input("Morning End", min_value=0, max_value=24, value=1, step=1)
+    
+eve_start = 20
+eve_end = 24
+morn_start = 0
+morn_end = 1
 
 with tab_degrad:
     with st.container(border=True):
