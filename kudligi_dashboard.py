@@ -65,6 +65,7 @@ class KudligiDashboard:
         self.year1_plant = None       # kept for the per-company PPA summary / hourly detail views
         self.year1_plant_no_bess = None
         self.hourly_dispatch_by_year = {}   # {year: hourly dispatch DataFrame}, with BESS, all 25 years
+        self.ppa_summaries_by_year = {}     # {year: ppa_summary() DataFrame}, with BESS, all 25 years
 
     def _build_plant_for_year(self, year, bess_capacity_override=None, pcs_cap_override=None):
         """
@@ -232,6 +233,11 @@ class KudligiDashboard:
         # plant we already built above instead of a fourth simulation run.
         self.hourly_dispatch_by_year[year] = with_bess.generation
 
+        # Keep the full per-company PPA summary (with BESS) for this year --
+        # this is what powers the 25-year PPA compliance tabs / downloadable
+        # workbook, so we don't need a third build_plant_for_year() call.
+        self.ppa_summaries_by_year[year] = with_bess.ppa_summary()
+
         return {
             "Year": year,
             "PPAs Violated with BESS": violated_PPAs_BESS,
@@ -259,18 +265,39 @@ class KudligiDashboard:
                 self.hourly_dispatch_by_year[year].to_excel(writer, sheet_name=f"Year {year}", index=False)
         return path
 
+    def save_ppa_summaries_by_year(self, path="Kudligi_PPA_Compliance_25Yr.xlsx"):
+        """
+        Writes one sheet per operating year (Year 1 .. Year 25), each holding
+        that year's full per-company PPA summary (delivered energy, revenue,
+        shortfall vs. minimum, etc.) -- the same table shown on the
+        dashboard's PPA compliance tabs. Requires calc_grid_utilization_comparison()
+        to have already been run for the years you want included (run_dashboard()
+        does this for all 25 years).
+        """
+        if not self.ppa_summaries_by_year:
+            raise RuntimeError(
+                "No PPA summaries computed yet -- call calc_grid_utilization_comparison() "
+                "for each year (or run_dashboard()) before saving."
+            )
+        with pd.ExcelWriter(path, engine="openpyxl") as writer:
+            for year in sorted(self.ppa_summaries_by_year):
+                self.ppa_summaries_by_year[year].to_excel(writer, sheet_name=f"Year {year}", index=False)
+        return path
+
     def run_dashboard(self, irr_table_path="Kudligi_Revenue_Costs_EBITDA_Table.xlsx",
                       hourly_dispatch_path="Kudligi_Hourly_Dispatch_25Yr.xlsx",
+                      ppa_summary_path="Kudligi_PPA_Compliance_25Yr.xlsx",
                       progress_callback=None):
         """
         progress_callback, if given, is called as progress_callback(done, total, label)
         as work proceeds across all three phases (the IRR table's 26-year pass,
-        the 25-year PPA-compliance/hourly-dispatch pass, and the final workbook
-        save) -- pass e.g. a function that updates a Streamlit st.progress() bar.
+        the 25-year PPA-compliance/hourly-dispatch pass, and the two final
+        workbook saves) -- pass e.g. a function that updates a Streamlit
+        st.progress() bar.
         """
         n_irr_years = len(YEARS)   # 26 (years 0..25)
         n_compliance_years = 25    # years 1..25
-        total_steps = n_irr_years + n_compliance_years + 1   # +1 for the final save
+        total_steps = n_irr_years + n_compliance_years + 2   # +2 for the two final saves
 
         def _irr_progress(done, _total, label):
             if progress_callback is not None:
@@ -283,8 +310,8 @@ class KudligiDashboard:
         payback = self.calc_cumulative_payback_period()
         utilizations = []
         # Bug fix: range(1, 25) stopped at year 24 and silently dropped
-        # Year 25 from both the compliance list and the hourly-dispatch
-        # workbook below.
+        # Year 25 from both the compliance list and the hourly-dispatch /
+        # PPA-summary workbooks below.
         for i in range(1, 26):
             utilization = self.calc_grid_utilization_comparison(year=i)
             utilizations.append(utilization)
@@ -293,7 +320,11 @@ class KudligiDashboard:
 
         hourly_dispatch_path = self.save_hourly_dispatch_by_year(hourly_dispatch_path)
         if progress_callback is not None:
-            progress_callback(total_steps, total_steps, "Saving hourly dispatch workbook")
+            progress_callback(n_irr_years + n_compliance_years + 1, total_steps, "Saving hourly dispatch workbook")
+
+        ppa_summary_path = self.save_ppa_summaries_by_year(ppa_summary_path)
+        if progress_callback is not None:
+            progress_callback(total_steps, total_steps, "Saving PPA compliance workbook")
 
         year1_compliance = utilizations[0]
         return {
@@ -302,7 +333,9 @@ class KudligiDashboard:
             "capex_to_ebitda_ratio": capex_ebitda,
             "payback": payback,
             "ppa compliance": utilizations,
+            "ppa_summaries_by_year": self.ppa_summaries_by_year,
             "hourly_dispatch_excel_path": hourly_dispatch_path,
+            "ppa_summary_excel_path": ppa_summary_path,
             # Bug fix: app.py reads these three keys at the top level of the
             # results dict (for the Year-1 compliance summary card), but this
             # method previously only ever returned them nested inside the
