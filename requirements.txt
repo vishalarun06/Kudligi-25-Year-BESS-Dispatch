@@ -3,3 +3,4 @@ openpyxl
 numpy
 streamlit==1.61.1
 numpy-financial
+xlsxwriter
